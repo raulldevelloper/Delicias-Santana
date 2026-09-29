@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+import java.nio.file.AccessDeniedException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -97,6 +98,17 @@ public class GlobalExceptionHandler {
                 extrairCaminho(request)
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(erro);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErroResponse> tratarAcessoNegado(AccessDeniedException ex, WebRequest request) {
+        ErroResponse erro = new ErroResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "Acesso negado",
+                ex.getMessage(),
+                extrairCaminho(request)
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(erro);
     }
 
     private String extrairCaminho(WebRequest request) {

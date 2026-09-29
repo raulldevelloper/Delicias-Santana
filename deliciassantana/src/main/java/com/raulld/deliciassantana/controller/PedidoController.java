@@ -5,9 +5,14 @@ import com.raulld.deliciassantana.dtos.CriarPedidoRequest;
 import com.raulld.deliciassantana.dtos.PedidoResponse;
 import com.raulld.deliciassantana.entitys.ItemPedido;
 import com.raulld.deliciassantana.entitys.Pedido;
+import com.raulld.deliciassantana.entitys.Role;
+import com.raulld.deliciassantana.repository.ClienteRepository;
+import com.raulld.deliciassantana.security.UsuarioDetails;
 import com.raulld.deliciassantana.service.PedidoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,35 +23,47 @@ import java.util.stream.Collectors;
 public class PedidoController {
 
     private final PedidoService pedidoService;
+    private final ClienteRepository clienteRepository;
 
-    public PedidoController(PedidoService pedidoService) {
+    public PedidoController(PedidoService pedidoService, ClienteRepository clienteRepository) {
         this.pedidoService = pedidoService;
+        this.clienteRepository = clienteRepository;
     }
 
-    // usado pelo cliente ao finalizar o carrinho
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PedidoResponse criar(@Valid @RequestBody CriarPedidoRequest request) {
-        Pedido pedido = pedidoService.criarPedido(request);
+    public PedidoResponse criar(@Valid @RequestBody CriarPedidoRequest request,
+                                @AuthenticationPrincipal UsuarioDetails usuarioLogado) {
+        Pedido pedido = pedidoService.criarPedido(request, usuarioLogado.getUsuario().getId());
         String linkWhatsApp = pedidoService.gerarLinkWhatsApp(pedido);
         return paraResponse(pedido, linkWhatsApp);
     }
 
-    // usado pelo cliente pra acompanhar status do próprio pedido
     @GetMapping("/{id}")
-    public PedidoResponse buscarPorId(@PathVariable Long id) {
-        return paraResponse(pedidoService.buscarPorId(id), null);
+    public PedidoResponse buscarPorId(@PathVariable Long id,
+                                      @AuthenticationPrincipal UsuarioDetails usuarioLogado) {
+        Pedido pedido = pedidoService.buscarPorId(id);
+        validarDonoDoPedidoOuAdmin(pedido, usuarioLogado);
+        return paraResponse(pedido, null);
     }
 
-    // usado pelo cliente pra ver histórico de pedidos dele
     @GetMapping("/cliente/{clienteId}")
-    public List<PedidoResponse> listarPorCliente(@PathVariable Long clienteId) {
+    public List<PedidoResponse> listarPorCliente(@PathVariable Long clienteId,
+                                                 @AuthenticationPrincipal UsuarioDetails usuarioLogado) {
+        boolean ehAdmin = usuarioLogado.getUsuario().getRole() == Role.ADMIN;
+        boolean ehDonoDaConta = clienteRepository.findByUsuarioId(usuarioLogado.getUsuario().getId())
+                .map(c -> c.getId().equals(clienteId))
+                .orElse(false);
+
+        if (!ehAdmin && !ehDonoDaConta) {
+            throw new AccessDeniedException("Acesso negado");
+        }
+
         return pedidoService.listarPorCliente(clienteId).stream()
                 .map(p -> paraResponse(p, null))
                 .collect(Collectors.toList());
     }
 
-    // usado pelo PAINEL DA DONA — lista tudo que ainda precisa de atenção
     @GetMapping("/painel")
     public List<PedidoResponse> listarPedidosAtivos() {
         return pedidoService.listarPedidosAtivosParaPainel().stream()
@@ -54,11 +71,18 @@ public class PedidoController {
                 .collect(Collectors.toList());
     }
 
-    // usado pelo PAINEL DA DONA — avança o status do pedido
     @PatchMapping("/{id}/status")
     public PedidoResponse atualizarStatus(@PathVariable Long id, @Valid @RequestBody AtualizarStatusRequest request) {
         Pedido pedido = pedidoService.atualizarStatus(id, request.getNovoStatus());
         return paraResponse(pedido, null);
+    }
+
+    private void validarDonoDoPedidoOuAdmin(Pedido pedido, UsuarioDetails usuarioLogado) {
+        boolean ehAdmin = usuarioLogado.getUsuario().getRole() == Role.ADMIN;
+        boolean ehDono = pedido.getCliente().getUsuario().getId().equals(usuarioLogado.getUsuario().getId());
+        if (!ehAdmin && !ehDono) {
+            throw new AccessDeniedException("Acesso negado");
+        }
     }
 
     private PedidoResponse paraResponse(Pedido pedido, String linkWhatsApp) {

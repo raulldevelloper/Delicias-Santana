@@ -45,9 +45,9 @@ public class PedidoService {
     }
 
     @Transactional
-    public Pedido criarPedido(CriarPedidoRequest request) {
-        Cliente cliente = clienteRepository.findById(request.getClienteId())
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente não encontrado"));
+    public Pedido criarPedido(CriarPedidoRequest request, Long usuarioId) {
+        Cliente cliente = clienteRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente não encontrado para este usuário"));
 
         Pedido pedido = new Pedido();
         pedido.setCliente(cliente);

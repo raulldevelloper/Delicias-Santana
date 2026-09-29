@@ -12,6 +12,8 @@ import com.raulld.deliciassantana.repository.UsuarioRepository;
 import com.raulld.deliciassantana.security.JwtService;
 import com.raulld.deliciassantana.security.UsuarioDetails;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -27,17 +29,20 @@ public class AuthController {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final ClienteRepository clienteRepository;
+    private final String setupKeyEsperada;
 
     public AuthController(AuthenticationManager authenticationManager,
                           JwtService jwtService,
                           UsuarioRepository usuarioRepository,
                           PasswordEncoder passwordEncoder,
-                          ClienteRepository clienteRepository) {
+                          ClienteRepository clienteRepository,
+                          @Value("${lanchonete.setup-key}") String setupKeyEsperada) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.clienteRepository = clienteRepository;
+        this.setupKeyEsperada = setupKeyEsperada;
     }
 
     @PostMapping("/login")
@@ -57,10 +62,15 @@ public class AuthController {
         return new TokenResponse(token, usuario.getRole().name(), usuario.getEmail(), clienteId);
     }
 
-    // TODO: endpoint temporário só para criar o usuário ADMIN nos testes.
-    // Remover ou proteger com senha de setup antes de qualquer coisa real.
+    // Rota protegida por uma chave secreta (variável de ambiente SETUP_KEY).
+    // Usada só uma vez para criar a conta ADMIN da dona. Sem a chave certa, ninguém cria admin.
     @PostMapping("/registrar-admin")
-    public TokenResponse registrarAdmin(@Valid @RequestBody CadastroAdminRequest request) {
+    public TokenResponse registrarAdmin(@Valid @RequestBody CadastroAdminRequest request,
+                                        @RequestHeader("X-Setup-Key") String setupKey) {
+        if (!setupKeyEsperada.equals(setupKey)) {
+            throw new AccessDeniedException("Chave de setup inválida");
+        }
+
         if (usuarioRepository.existsByEmail(request.getEmail())) {
             throw new EmailJaCadastradoException("Este email já está cadastrado: " + request.getEmail());
         }
@@ -72,6 +82,6 @@ public class AuthController {
         usuario = usuarioRepository.save(usuario);
 
         String token = jwtService.gerarToken(usuario);
-        return new TokenResponse(token, usuario.getRole().name(), usuario.getEmail(), null); // admin não tem clienteId
+        return new TokenResponse(token, usuario.getRole().name(), usuario.getEmail(), null);
     }
 }

@@ -16,9 +16,6 @@ import java.util.List;
 @NoArgsConstructor
 public class CriarPedidoRequest {
 
-    @NotNull
-    private Long clienteId;
-
     private String observacao;
 
     @NotEmpty

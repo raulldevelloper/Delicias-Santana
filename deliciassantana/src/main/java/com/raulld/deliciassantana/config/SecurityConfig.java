@@ -2,6 +2,7 @@ package com.raulld.deliciassantana.config;
 
 import com.raulld.deliciassantana.security.CustomUserDetailsService;
 import com.raulld.deliciassantana.security.JwtAuthFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -27,13 +28,16 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
     private final PasswordEncoder passwordEncoder;
+    private final String corsOrigemPermitida;
 
     public SecurityConfig(CustomUserDetailsService userDetailsService,
                           JwtAuthFilter jwtAuthFilter,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder,
+                          @Value("${lanchonete.cors.origem}") String corsOrigemPermitida) {
         this.userDetailsService = userDetailsService;
         this.jwtAuthFilter = jwtAuthFilter;
         this.passwordEncoder = passwordEncoder;
+        this.corsOrigemPermitida = corsOrigemPermitida;
     }
 
     @Bean
@@ -43,13 +47,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // rotas públicas
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/clientes").permitAll() // <- nova linha: cadastro de cliente é público
+                        .requestMatchers(HttpMethod.POST, "/api/clientes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/produtos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categorias/**").permitAll()
 
-                        // rotas exclusivas da dona (painel administrativo)
                         .requestMatchers("/api/pedidos/painel").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/pedidos/*/status").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/produtos").hasRole("ADMIN")
@@ -59,7 +61,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/categorias/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/categorias/**").hasRole("ADMIN")
 
-                        // tudo mais exige estar logado (CLIENTE ou ADMIN)
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -82,7 +83,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedOriginPatterns(List.of(corsOrigemPermitida));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
