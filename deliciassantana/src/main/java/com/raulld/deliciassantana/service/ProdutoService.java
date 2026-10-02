@@ -69,6 +69,11 @@ public class ProdutoService {
         produtoRepository.save(produto);
     }
 
+    @Transactional(readOnly = true)
+    public List<Produto> listarTodosParaAdmin() {
+        return produtoRepository.findAllByOrderByCategoriaIdAscNomeAsc();
+    }
+
     private Categoria buscarCategoriaOuFalhar(Long categoriaId) {
         return categoriaRepository.findById(categoriaId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada: " + categoriaId));

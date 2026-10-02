@@ -26,6 +26,13 @@ public class ProdutoController {
                 .collect(Collectors.toList());
     }
 
+    @GetMapping("/admin/todos")
+    public List<ProdutoResponse> listarTodosParaAdmin() {
+        return produtoService.listarTodosParaAdmin().stream()
+                .map(this::paraResponse)
+                .collect(Collectors.toList());
+    }
+
     @GetMapping("/{id}")
     public ProdutoResponse buscarPorId(@PathVariable Long id) {
         return paraResponse(produtoService.buscarPorId(id));
