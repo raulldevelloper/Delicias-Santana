@@ -41,15 +41,15 @@ public class ProdutoService {
     @Transactional
     public Produto atualizar(Long id, Produto dadosAtualizados) {
         Produto produto = buscarPorId(id);
-        Categoria categoria = buscarCategoriaOuFalhar(dadosAtualizados.getCategoria().getId());
-
         produto.setNome(dadosAtualizados.getNome());
         produto.setDescricao(dadosAtualizados.getDescricao());
         produto.setPreco(dadosAtualizados.getPreco());
         produto.setFotoUrl(dadosAtualizados.getFotoUrl());
-        produto.setCategoria(categoria);
+        produto.setCategoria(dadosAtualizados.getCategoria());
         produto.setControlaEstoque(dadosAtualizados.isControlaEstoque());
         produto.setTempoPreparoMinutos(dadosAtualizados.getTempoPreparoMinutos());
+        produto.setEstoqueAtual(dadosAtualizados.getEstoqueAtual());
+        produto.setAtivo(dadosAtualizados.isAtivo());
         return produtoRepository.save(produto);
     }
 
