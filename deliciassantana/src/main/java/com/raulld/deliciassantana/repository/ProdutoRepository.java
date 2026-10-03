@@ -8,5 +8,6 @@ import java.util.List;
 public interface ProdutoRepository extends JpaRepository<Produto, Long> {
     List<Produto> findByAtivoTrueOrderByCategoriaAscNomeAsc();
     List<Produto> findByCategoriaIdAndAtivoTrue(Long categoriaId);
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Produto p JOIN FETCH p.categoria ORDER BY p.categoria.id ASC, p.nome ASC")
     List<Produto> findAllByOrderByCategoriaIdAscNomeAsc();
 }
