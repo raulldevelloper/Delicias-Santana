@@ -111,6 +111,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(erro);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErroResponse> tratarViolacaoIntegridade(
+            org.springframework.dao.DataIntegrityViolationException ex, WebRequest request) {
+        ErroResponse erro = new ErroResponse(
+                HttpStatus.CONFLICT.value(),
+                "Não é possível excluir",
+                "Este produto já foi usado em pedidos e não pode ser excluído. Desative-o em vez de excluir.",
+                extrairCaminho(request)
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
     private String extrairCaminho(WebRequest request) {
         return request.getDescription(false).replace("uri=", "");
     }
