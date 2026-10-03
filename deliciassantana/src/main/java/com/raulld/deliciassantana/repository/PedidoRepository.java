@@ -8,6 +8,12 @@ import java.util.List;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     List<Pedido> findByClienteIdOrderByCriadoEmDesc(Long clienteId);
-    List<Pedido> findByStatusOrderByCriadoEmAsc(StatusPedido status);
-    List<Pedido> findByStatusInOrderByCriadoEmAsc(List<StatusPedido> status);
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT DISTINCT p FROM Pedido p " +
+                    "JOIN FETCH p.itens i " +
+                    "JOIN FETCH i.produto " +
+                    "WHERE p.status IN :status " +
+                    "ORDER BY p.criadoEm ASC"
+    )
+    List<Pedido> findByStatusInOrderByCriadoEmAsc(@org.springframework.data.repository.query.Param("status") List<StatusPedido> status);
 }
